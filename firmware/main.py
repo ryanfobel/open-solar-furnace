@@ -72,12 +72,14 @@ print("Connecting to Blynk...")
 blynk = BlynkLib.Blynk(BLYNK_AUTH)
 
 
+# Initialize the fan duty cycle.
+blynk.virtual_write(3, fan.duty() / 1023.0 * 100)
+
 @blynk.ON("connected")
 def blynk_connected(ping):
     print('Blynk ready. Ping:', ping, 'ms')
 
-counter_start_time_ms = time.ticks_ms()
-
+ 
 def get_frequency():
   global interrupt_counter, counter_start_time_ms
   
@@ -116,44 +118,30 @@ def get_frequency():
   t_delta_ms = 500
   time.sleep_ms(t_delta_ms)
   frequency = interrupt_counter / (t_delta_ms / 1000.0)
+  print('frequency=%.0f' % frequency)
+  blynk.virtual_write(2, frequency)
   return frequency
 
 
-def read_temp_in(convert=True):
-  try:
-    if convert:
-      ds.convert_temp()
-      time.sleep_ms(750)
-    temp = ds.read_temp(addresses[0])
-    print("Temp in=%.1fC" % temp)
-    blynk.virtual_write(0, temp)
-    """
-    Need to handle CRC error
-    File "ds18x20.py", line 29, in read_scratch
-    Exception: CRC error
-    """
-  except:
-    pass
+def get_temp_in(convert=True):
+  if convert:
+    ds.convert_temp()
+    time.sleep_ms(750)
+  temp = ds.read_temp(addresses[0])
+  print("Temp in=%.1fC" % temp)
+  blynk.virtual_write(0, temp)
+  return temp
 
 
-def read_temp_out(convert=True):
-  try:
-    if convert:
-      ds.convert_temp()
-      time.sleep_ms(750)
-    temp = ds.read_temp(addresses[1])
-    print("Temp out=%.1fC" % temp)
-    blynk.virtual_write(1, temp)
-  except:
-    pass
+def get_temp_out(convert=True):
+  if convert:
+    ds.convert_temp()
+    time.sleep_ms(750)
+  temp = ds.read_temp(addresses[1])
+  print("Temp out=%.1fC" % temp)
+  blynk.virtual_write(1, temp)
+  return temp
 
-
-def read_frequency():
-  frequency = round(get_frequency())
-  print('frequency=%d' % frequency)
-  blynk.virtual_write(2, frequency)
-  
-  
 @blynk.VIRTUAL_WRITE(3)
 def duty_cycle_write_handler(value):
   duty_cycle = int(float(value[0]) / 100 * 1023)
@@ -162,34 +150,72 @@ def duty_cycle_write_handler(value):
 
 
 @blynk.VIRTUAL_READ(4)
-def read_temp():
+def get_temp():
   temp = si7021_sensor.temperature()
   print("Temp=%.1fC" % temp)
   blynk.virtual_write(4, temp)
+  return temp
 
 
 @blynk.VIRTUAL_READ(5)
-def read_humidity():
-  hum = si7021_sensor.humidity()
-  print("Humidity=%.1f%%" % hum)
-  blynk.virtual_write(5, hum)
+def get_humidity():
+  humidity = si7021_sensor.humidity()
+  print("Humidity=%.1f%%" % humidity)
+  blynk.virtual_write(5, humidity)
+  return humidity
   
 
-async def update_frequency(sleep_s=1):
-  while True:
-    read_frequency()
-    await asyncio.sleep(sleep_s)
-    
+def get_power():
+  temp_in = get_temp_in(False)
+  temp_out = get_temp_out(False)
 
-async def update_temperatures(sleep_s=10):
+  # Use the fan's rated flow rate from the datasheet scaled by the duty
+  # cycle. We could probably calibrate this based on the tachometer signal,
+  # which seems to change when the air flow is restricted.
+  flow_rate = fan.duty() / 100.0 * 3 # m^3/min
+  
+  """
+  https://builditsolar.com/References/Measurements/CollectorPerformance.htm
+
+  # https://www.engineeringtoolbox.com/air-properties-d_156.html
+  air_density = 1.208 kg/m^3
+  
+  Air density increases as it is heated. Use the same correction factor
+  as builditsolar.com page for now (1.208 * 0.065 / 0.075 = 1.047 kg/m^3).
+  
+  Qout = (flow_rate)*(air_density)*(temp_out - temp_in)*(Cp_air)
+  Qout = (0.6 m^3/min)(1.047 kg/m^3)(30C - 20C)(1.006 kJ/kgK)
+  Qout = (7.29 kJ/min)*(1000 J/kJ)*(1/60 min/s)
+  Qout = 105 W
+  """
+  air_density = 1.208 * (.065 / .075)
+  
+  # Specific heat capacity of air (should also correct for temperature:
+  # https://www.ohio.edu/mechanical/thermo/property_tables/air/air_Cp_Cv.html).
+  # Should we be using Cp or Cv (constant pressure or constant volume)?
+  Cp_air = 1.006 # kJ/kgK
+
+  # Hard code temp_in for now (since it is the same as temp_out)
+  temp_in = min(20, temp_in)
+
+  Qout = flow_rate * air_density * (temp_out - temp_in) * Cp_air * 1000.0 / 60.0
+  print("Qout=%.1f W" % Qout)
+  blynk.virtual_write(6, Qout)
+  return Qout
+
+
+async def update_sensors(sleep_s=10):
   convert_s = 0.75
   while True:
-    ds.convert_temp()
-    await asyncio.sleep(convert_s)
-    read_temp_in(False)
-    read_temp_out(False)
-    read_temp()
-    read_humidity()
+    try:
+      get_frequency()
+      get_temp()
+      get_humidity()
+      ds.convert_temp()
+      await asyncio.sleep(convert_s)
+      get_power() # also triggers get_temp_in() and get_temp_out()
+    except:
+      pass
     if sleep_s > convert_s:
       await asyncio.sleep(sleep_s - convert_s)
 
@@ -199,9 +225,15 @@ async def blynk_event_loop(sleep_s=0.1):
     blynk.run()
     await asyncio.sleep(sleep_s)
 
+def start_event_loop():
+  try:
+    del loop
+  except:
+    pass
+  loop = asyncio.get_event_loop()
+  loop.create_task(blynk_event_loop(0))
+  loop.create_task(update_sensors(10))
+  loop.run_forever()
+  
+start_event_loop()
 
-loop = asyncio.get_event_loop()
-loop.create_task(blynk_event_loop(0.1))
-loop.create_task(update_frequency(1))
-loop.create_task(update_temperatures(10))
-loop.run_forever()
