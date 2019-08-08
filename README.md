@@ -19,9 +19,10 @@ We plan to draw upon existing designs published online to meet the first 3 desig
 
 # Project status (updated Aug 8, 2019)
 
-We built a small (2'x4') prototype and hosted a [build party](https://photos.app.goo.gl/3FedmAXnWcR5EEUT7) in March to building a full size panel (4'x8') with a team of 6 people. This is currently being installed on one of our homes as a demonstration project.
+We built a small (2'x4') prototype and hosted a [build party](https://photos.app.goo.gl/3FedmAXnWcR5EEUT7) in March to assemble a full-sized panel (4'x8') with a team of 6 people. This panel is currently being installed on my home as a demonstration.
 
 ![Prototype](https://gitlab.com/ryanfobel/open-solar-furnace/wikis/uploads/f3c4464e2cd495b67126fe4544281fc0/image.png)
+![Build party](https://gitlab.com/ryanfobel/open-solar-furnace/wikis/uploads/978fbffa4fab1c8f74f3b16f2da31182/image.png)
 
 [Rise Waterloo Region](https://www.facebook.com/risewaterlooregion/) will host a community build workshop in Kitchener-Waterloo in the Fall of 2019. If you'd like to learn more or to be notified of upcoming workshops, please get in touch via email at risewaterlooregion@gmail.com.
 
