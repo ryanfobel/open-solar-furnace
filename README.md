@@ -17,9 +17,13 @@ The goal of this project is to create a solar heater design (or collection of de
 
 We plan to draw upon existing designs published online to meet the first 3 design requirements, and to add a simple WiFi-enabled microcontroller (e.g., [ESP8266](https://en.wikipedia.org/wiki/ESP8266) or [ESP32](https://en.wikipedia.org/wiki/ESP32)) to facilitate performance tracking and thermostat control. This will allow the community to evaluate/test design alternatives (e.g., [A/B testing](https://en.wikipedia.org/wiki/A/B_testing)) and to track the overall impact of these solar heaters in reducing heating costs and carbon emissions at an individual and community level.
 
-# Project status (updated Feb 4, 2019)
+# Project status (updated Aug 8, 2019)
 
-We are currently collecting materials to build a first prototype and [Rise Waterloo Region](https://www.facebook.com/risewaterlooregion/) plans to hold community build workshops in Kitchener-Waterloo in the Spring of 2019. If you'd like to learn more or to be notified of upcoming workshops, please get in touch via email at risewaterlooregion@gmail.com.
+We built a small (2'x4') prototype and hosted a [build party](https://photos.app.goo.gl/3FedmAXnWcR5EEUT7) in March to building a full size panel (4'x8') with a team of 6 people. This is currently being installed on one of our homes as a demonstration project.
+
+![Prototype](https://gitlab.com/ryanfobel/open-solar-furnace/wikis/uploads/f3c4464e2cd495b67126fe4544281fc0/image.png)
+
+[Rise Waterloo Region](https://www.facebook.com/risewaterlooregion/) will host a community build workshop in Kitchener-Waterloo in the Fall of 2019. If you'd like to learn more or to be notified of upcoming workshops, please get in touch via email at risewaterlooregion@gmail.com.
 
 ![Rise Waterloo Region](https://gitlab.com/ryanfobel/open-solar-furnace/wikis/uploads/c18c53d37defcee7939215fca3499d04/image.png)
 
@@ -33,9 +37,10 @@ We are currently collecting materials to build a first prototype and [Rise Water
 
 # Support
 
-This project is supported by [Life Co-op's Community fund](http://www.lifecoop.ca/lifes-community-fund)
+This project is supported by [Life Co-op's Community fund](http://www.lifecoop.ca/lifes-community-fund) and a [City of Kitchener community grant](https://www.kitchener.ca/en/city-services/community-grants.aspx).
 
 ![Life Co-op logo](https://gitlab.com/ryanfobel/open-solar-furnace/wikis/uploads/31845e7600df52725a43f774fb5dab4e/image.png).
+![City of Kitchener Logo](https://gitlab.com/ryanfobel/open-solar-furnace/wikis/uploads/adfa5804a64cb85f40aac0540dd048d6/image.png)
 
 [1]: https://www.eia.gov/todayinenergy/detail.php?id=10271
 [2]: https://www.hydroone.com/saving-money-and-energy/residential/tips-and-tools/home-heating-guide
