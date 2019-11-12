@@ -49,14 +49,15 @@ print("""
         /___/ for Python v""" + _VERSION + " (" + os.uname()[0] + ")\n")
 
 class BlynkProtocol:
-    def __init__(self, auth, heartbeat=10, buffin=1024, log=None):
+    def __init__(self, auth, heartbeat=10, buffin=1024, log=None, connect=True):
         self.callbacks = {}
         self.heartbeat = heartbeat*1000
         self.buffin = buffin
         self.log = log or dummy
         self.auth = auth
         self.state = DISCONNECTED
-        self.connect()
+        if connect:
+            self.connect()
 
     def ON(blynk, evt):
         class Decorator:
