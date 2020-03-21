@@ -1,4 +1,10 @@
-# Introduction to the Open Solar Furnace
+# Introduction to the Open Solar Furnace  <!-- omit in toc -->
+
+## Table of contents: <!-- omit in toc -->
+- [Goals for this project:](#goals-for-this-project)
+- [Project status (updated Aug 8, 2019)](#project-status-updated-aug-8-2019)
+- [More information:](#more-information)
+- [Support](#support)
 
 When people think of solar panels, the image that often comes to mind is of [photovoltaic panels](https://en.wikipedia.org/wiki/Photovoltaics) which convert the sun's energy into electricity to power homes (and maybe to charge an electric vehicle). While photovoltaics are essential for transitioning to a renewable energy economy, they are still quite expensive and remain out of reach for the majority of homeowners. While some enthusiasts may be able to save money by installing their own photovoltaic systems, for most people, the technology is too complicated and requires installation by a trained professional.
 
