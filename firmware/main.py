@@ -23,20 +23,34 @@ import time
 import network
 import onewire
 import ds18x20
+import json
 
 import BlynkLib
 import uasyncio as asyncio
+from umqtt.robust import MQTTClient
 
 
 try:
-  from secrets import BLYNK_AUTH, WIFI_SSID, WIFI_PASSWORD
+  from secrets import BLYNK_AUTH, WIFI_SSID, WIFI_PASSWORD, MQTT_HOST, MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD
 except:
   print('You must create a secrets.py file.')
 
 
 wifi = network.WLAN(network.STA_IF)
 blynk = BlynkLib.Blynk(BLYNK_AUTH, connect=False)
+mqtt_client = MQTTClient(MQTT_CLIENT_ID, MQTT_HOST, user=MQTT_USER, password=MQTT_PASSWORD)
 interrupt_counter = 0
+
+keys = ['temp_in',         # v0
+        'temp_out',        # v1
+        'temp_panel',      # v2
+        'fan_duty_cycle',  # v3
+        'fan_frequency',   # v4
+        'power']           # v5
+
+
+data = dict(zip(keys, [0]*len(keys)))
+virtual_pins = dict(zip(keys, range(len(keys) + 1)))
 
 
 def callback(pin):
@@ -61,16 +75,10 @@ ds = ds18x20.DS18X20(onewire.OneWire(machine.Pin(32)))
 set_point = 25
 
 
-onewire_addresses = {'temp_in': 0,
+onewire_addresses = {'temp_in': None,
                      'temp_out': bytearray(b'(\xd6G\x8a\x01\x00\x00\xb9'),
                      'temp_panel': bytearray(b'(\xd6ay\x97\t\x03\x8d')
                      }  
-
-
-virtual_pins = {'temp_in': 0,
-                'temp_out': 1,
-                'temp_panel': 2
-                }
 
 
 print("Scanning onewire bus...")
@@ -94,10 +102,13 @@ def wifi_connect():
   print('IP:', wifi.ifconfig()[0])
 
 
+def mqtt_connect():
+  mqtt_client.connect()
+
+
 def set_fan_duty_cycle(value):
   duty_cycle = int(float(value) / 100 * 1023)
   fan.duty(duty_cycle)
-  print('duty_cycle=%d' % duty_cycle)
 
 
 def get_frequency():
@@ -138,36 +149,30 @@ def get_frequency():
   t_delta_ms = 500
   time.sleep_ms(t_delta_ms)
   frequency = interrupt_counter / (t_delta_ms / 1000.0)
-  print('frequency=%.0f' % frequency)
-  blynk.virtual_write(4, frequency)
   return frequency
 
 
-def get_temp(label, convert=True):
+def get_temperatures(convert=True):
+  output = {}
   if convert:
     ds.convert_temp()
     time.sleep_ms(750)
-  if onewire_addresses[label]:
-    temp = ds.read_temp(onewire_addresses[label])
-    print("%s=%.1fC" % (label, temp))
-    blynk.virtual_write(virtual_pins[label], temp)
-  else:
-    temp = None
-  return temp
+  for label, address in onewire_addresses.items():
+    if address:
+      output[label] = ds.read_temp(address)
+    else:
+      output[label] = None
+  return output
 
 
 def get_power():
-  temp_in = get_temp('temp_in', False)
-  temp_out = get_temp('temp_out', False)
-  temp_panel = get_temp('temp_panel', False)
+  global data
 
   # only turn on the fan if the panel temp is > 25C
-  if temp_panel > set_point:
+  if data['temp_panel'] > set_point:
     set_fan_duty_cycle(100)
   else:
     set_fan_duty_cycle(0)
-  # update the fan slider
-  blynk.virtual_write(3, fan.duty())
 
   # Use the fan's rated flow rate from the datasheet scaled by the duty
   # cycle. We could probably calibrate this based on the tachometer signal,
@@ -195,24 +200,33 @@ def get_power():
   # Should we be using Cp or Cv (constant pressure or constant volume)?
   Cp_air = 1.006 # kJ/kgK
 
-  # Hard code temp_in for now
-  temp_in = 20
-
-  Qout = flow_rate * air_density * (temp_out - temp_in) * Cp_air * 1000.0 / 60.0
-  print("Qout=%.1f W" % Qout)
-  blynk.virtual_write(6, Qout)
+  Qout = flow_rate * air_density * (data['temp_out'] - data['temp_in']) * Cp_air * 1000.0 / 60.0
   return Qout
 
 
 async def update_sensors(sleep_s=10):
+  global data
+
   convert_s = 0.75
   while True:
     print("update_sensors()")
     try:
-      get_frequency()
-      ds.convert_temp()
-      await asyncio.sleep(convert_s)
-      get_power() # also triggers get_temp_in() and get_temp_out()
+      data['fan_frequency'] = get_frequency()
+      data['fan_duty_cycle'] = int(fan.duty() / 1023.0 * 100)
+
+      data.update(get_temperatures())
+      
+      # Hard code temp_in for now
+      data['temp_in'] = 20
+
+      data['power'] = get_power()
+
+      print(data)
+
+      for label, pin in virtual_pins.items():
+        blynk.virtual_write(pin, data[label])
+
+      mqtt_client.publish('open-solar-furnace/%s' % MQTT_CLIENT_ID, json.dumps(data))
     except Exception as e:
       print('Exception: %s' % e)
     if sleep_s > convert_s:
@@ -228,6 +242,7 @@ async def blynk_event_loop(sleep_s=.1):
         blynk.disconnect()
         wifi_connect()
         await asyncio.sleep(5)
+        mqtt_connect()
       if blynk.state == BlynkLib.DISCONNECTED:
         print("blynk_connect()")
         blynk.connect()
