@@ -170,7 +170,7 @@ def get_power():
 
   # only turn on the fan if the panel temp is > 25C
   if data['temp_panel'] > set_point:
-    set_fan_duty_cycle(100)
+    set_fan_duty_cycle(75)
   else:
     set_fan_duty_cycle(0)
 
