@@ -35,7 +35,7 @@ import json
 import BlynkLib
 import uasyncio as asyncio
 from umqtt.robust import MQTTClient
-from supervisor import BaseService
+from supervisor import BaseService, get_env
 
 
 try:
@@ -256,7 +256,7 @@ class Service(BaseService):
             else:
                 await asyncio.sleep(sleep_s)
 
-blynk = BlynkLib.Blynk(Service._env()['BLYNK_AUTH'], connect=False)
+blynk = BlynkLib.Blynk(get_env(Service.__module__)['BLYNK_AUTH'], connect=False)
 
 @blynk.VIRTUAL_WRITE(3)
 def duty_cycle_write_handler(value):
