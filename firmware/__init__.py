@@ -223,10 +223,17 @@ class Service(BaseService):
 
                     self.logger.debug(repr(data))
 
-                    for label, pin in virtual_pins.items():
-                        blynk.virtual_write(pin, data[label])
+                    # If we're connected to the blynk server, push out updates
+                    if blynk.state == BlynkLib.CONNECTED:
+                        for label, pin in virtual_pins.items():
+                            blynk.virtual_write(pin, data[label])
 
-                    self.mqtt_client.publish('open-solar-furnace/%s' % self.env['MQTT_CLIENT_ID'], json.dumps(data))
+                    # Try to publish updates over mqtt
+                    try:
+                        self.mqtt_client.ping()
+                        self.mqtt_client.publish('open-solar-furnace/%s' % self.env['MQTT_CLIENT_ID'], json.dumps(data))
+                    except:
+                        pass
                 except Exception as e:
                     self.logger.error('Exception: %s' % e)
                 if sleep_s > convert_s:
@@ -240,10 +247,13 @@ class Service(BaseService):
                 await asyncio.sleep(sleep_s)
                 try:
                     if not self.wifi.isconnected():
+                        self.logger.debug('blynk.disconnnect()')
                         blynk.disconnect()
+                        self.logger.debug('wifi.connect()')
                         self.wifi_connect()
                         await asyncio.sleep(5)
                     if self.mqtt_client.sock is None:
+                        self.logger.debug('mqtt_connect()')
                         self.mqtt_connect()
                     if blynk.state == BlynkLib.DISCONNECTED:
                         self.logger.info("blynk_connect()")
