@@ -40,7 +40,7 @@ from supervisor import BaseService, get_env
 
 try:
     env = json.load(open('env.json', 'r'))
-except:
+except OSError:
     print('You must create an env.json file.')
 
 
@@ -92,21 +92,21 @@ class Service(BaseService):
                                   'temp_panel': bytearray(b'(\xd6ay\x97\t\x03\x8d')
                                   }
 
-        print("Scanning onewire bus...")
-        print(str(self.ds.scan()))
+        self.logger.info("Scanning onewire bus...")
+        self.logger.info(str(self.ds.scan()))
 
     def wifi_connect(self):
-        print("Connecting to WiFi...")
+        self.logger.info("Connecting to WiFi...")
         self.wifi.active(True)
         self.wifi.connect(env['WIFI_SSID'], env['WIFI_PASSWORD'])
-        print('IP:', wifi.ifconfig()[0])
+        self.logger.info('IP:', wifi.ifconfig()[0])
 
     def mqtt_connect(self):
         self.mqtt_client.connect()
 
     @classmethod
     def set_fan_duty_cycle(cls, value):
-      print('set_fan_duty_cycle(%s)' % value)
+      cls.logger.debug('set_fan_duty_cycle(%s)' % value)
       duty_cycle = int(float(value) / 100 * 1023)
       cls.fan.duty(duty_cycle)
 
@@ -209,8 +209,8 @@ class Service(BaseService):
 
         convert_s = 0.75
         while True:
-            if self.state == 'running':          
-                print("update_sensors()")
+            if self.state == 'running':
+                self.logger.debug("update_sensors()")
                 try:
                     data['fan_frequency'] = self.get_frequency()
                     data['fan_duty_cycle'] = int(self.fan.duty() / 1023.0 * 100)
@@ -221,14 +221,14 @@ class Service(BaseService):
                     data['temp_in'] = 20
                     data['power'] = self.get_power()
 
-                    print(data)
+                    self.logger.debug(repr(data))
 
                     for label, pin in virtual_pins.items():
                         blynk.virtual_write(pin, data[label])
 
                     self.mqtt_client.publish('open-solar-furnace/%s' % self.env['MQTT_CLIENT_ID'], json.dumps(data))
                 except Exception as e:
-                    print('Exception: %s' % e)
+                    self.logger.error('Exception: %s' % e)
                 if sleep_s > convert_s:
                     await asyncio.sleep(sleep_s - convert_s)
             else:
@@ -240,19 +240,18 @@ class Service(BaseService):
                 await asyncio.sleep(sleep_s)
                 try:
                     if not self.wifi.isconnected():
-                        print("wifi_connect()")
                         blynk.disconnect()
                         self.wifi_connect()
                         await asyncio.sleep(5)
                     if self.mqtt_client.sock is None:
                         self.mqtt_connect()
                     if blynk.state == BlynkLib.DISCONNECTED:
-                        print("blynk_connect()")
+                        self.logger.info("blynk_connect()")
                         blynk.connect()
                         await asyncio.sleep(5)
                     blynk.run()
                 except Exception as e:
-                    print('Exception: %s' % e)
+                    self.logger.error('Exception: %s' % e)
             else:
                 await asyncio.sleep(sleep_s)
 
