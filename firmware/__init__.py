@@ -39,7 +39,7 @@ from supervisor import BaseService, get_env
 
 
 try:
-    env = json.load(open('env.json', 'r'))
+    env = json.load(open('envs/env.json', 'r'))
 except OSError:
     print('You must create an env.json file.')
 
