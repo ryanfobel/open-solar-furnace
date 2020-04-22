@@ -95,12 +95,6 @@ class Service(BaseService):
         self.logger.info("Scanning onewire bus...")
         self.logger.info(str(self.ds.scan()))
 
-    def wifi_connect(self):
-        self.logger.info("Connecting to WiFi...")
-        self.wifi.active(True)
-        self.wifi.connect(env['WIFI_SSID'], env['WIFI_PASSWORD'])
-        self.logger.info('IP:', wifi.ifconfig()[0])
-
     def mqtt_connect(self):
         self.mqtt_client.connect()
 
@@ -249,9 +243,6 @@ class Service(BaseService):
                     if not self.wifi.isconnected():
                         self.logger.debug('blynk.disconnnect()')
                         blynk.disconnect()
-                        self.logger.debug('wifi.connect()')
-                        self.wifi_connect()
-                        await asyncio.sleep(5)
                     if self.mqtt_client.sock is None:
                         self.logger.debug('mqtt_connect()')
                         self.mqtt_connect()
