@@ -100,7 +100,6 @@ class Service(BaseService):
 
     @classmethod
     def set_fan_duty_cycle(cls, value):
-      cls.logger.debug('set_fan_duty_cycle(%s)' % value)
       duty_cycle = int(float(value) / 100 * 1023)
       cls.fan.duty(duty_cycle)
 
@@ -204,7 +203,6 @@ class Service(BaseService):
         convert_s = 0.75
         while True:
             if self.state == 'running':
-                self.logger.debug("update_sensors()")
                 try:
                     data['fan_frequency'] = self.get_frequency()
                     data['fan_duty_cycle'] = int(self.fan.duty() / 1023.0 * 100)
