@@ -74,6 +74,10 @@ class Service(BaseService):
     # Setup the fan to use a PWM frequency of 25kHz and a 50% duty cycle.
     fan = machine.PWM(machine.Pin(19, machine.Pin.OUT), freq=25000, duty=int(0.5*1023))
     ds = ds18x20.DS18X20(onewire.OneWire(machine.Pin(32)))
+    onewire_addresses = {'temp_in': None,
+                         'temp_out': bytearray(b'(\xd6G\x8a\x01\x00\x00\xb9'),
+                         'temp_panel': bytearray(b'(\xd6ay\x97\t\x03\x8d')
+                        }
 
     # Setup
     def __init__(self):
@@ -91,12 +95,6 @@ class Service(BaseService):
         self._loop.create_task(self._blynk_event_loop())
         self._loop.create_task(self._maintain_connections(30))
         self._loop.create_task(self._update_sensors(10))
-
-        self.onewire_addresses = {'temp_in': None,
-                                  'temp_out': bytearray(b'(\xd6G\x8a\x01\x00\x00\xb9'),
-                                  'temp_panel': bytearray(b'(\xd6ay\x97\t\x03\x8d')
-                                  }
-
         self.logger.info("Scanning onewire bus...")
         self.logger.info(str(self.ds.scan()))
 
@@ -155,7 +153,7 @@ class Service(BaseService):
             if convert:
                 cls.ds.convert_temp()
                 time.sleep_ms(750)
-            for label, address in onewire_addresses.items():
+            for label, address in cls.onewire_addresses.items():
                 if address:
                     output[label] = cls.ds.read_temp(address)
                 else:
