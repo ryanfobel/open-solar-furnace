@@ -31,6 +31,7 @@ import network
 import onewire
 import ds18x20
 import json
+import gc
 
 import BlynkLib
 import uasyncio as asyncio
@@ -84,8 +85,9 @@ class Service(BaseService):
                                       self.env['MQTT_HOST'],
                                       user=self.env['MQTT_USER'],
                                       password=self.env['MQTT_PASSWORD'])
-        self._loop.create_task(self.blynk_event_loop())
-        self._loop.create_task(self.update_sensors(5))
+        self._loop.create_task(self._blynk_event_loop())
+        self._loop.create_task(self._maintain_connections(30))
+        self._loop.create_task(self._update_sensors(10))
 
         self.onewire_addresses = {'temp_in': None,
                                   'temp_out': bytearray(b'(\xd6G\x8a\x01\x00\x00\xb9'),
@@ -197,7 +199,7 @@ class Service(BaseService):
         Qout = flow_rate * air_density * (data['temp_out'] - data['temp_in']) * Cp_air * 1000.0 / 60.0
         return Qout
 
-    async def update_sensors(self, sleep_s=10):
+    async def _update_sensors(self, sleep_s=10):
         global data
 
         convert_s = 0.75
@@ -226,13 +228,28 @@ class Service(BaseService):
                     except:
                         pass
                 except Exception as e:
-                    self.logger.error('Exception: %s' % e)
+                    self.logger.error('Exception: %s' % repr(e))
                 if sleep_s > convert_s:
                     await asyncio.sleep(sleep_s - convert_s)
             else:
               await asyncio.sleep(1)
+            
+            gc.collect()
 
-    async def blynk_event_loop(self, sleep_s=.1):
+    async def _blynk_event_loop(self, sleep_s=.1):
+        while True:
+            if self.state == 'running':
+                await asyncio.sleep(sleep_s)
+                try:
+                    blynk.run()
+                except Exception as e:
+                    self.logger.error('Exception: %s' % repr(e))
+            else:
+                await asyncio.sleep(sleep_s)
+
+            gc.collect()
+
+    async def _maintain_connections(self, sleep_s):
         while True:
             if self.state == 'running':
                 await asyncio.sleep(sleep_s)
@@ -254,11 +271,13 @@ class Service(BaseService):
                         self.logger.info("blynk_connect()")
                         blynk.connect()
                         await asyncio.sleep(5)
-                    blynk.run()
                 except Exception as e:
-                    self.logger.error('Exception: %s' % e)
+                    self.logger.error('Exception: %s' % repr(e))
             else:
-                await asyncio.sleep(sleep_s)
+                await asyncio.sleep(1)
+
+            gc.collect()
+
 
 blynk = BlynkLib.Blynk(get_env(Service.__module__)['BLYNK_AUTH'], connect=False)
 
