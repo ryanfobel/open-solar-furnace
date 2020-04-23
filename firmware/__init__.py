@@ -81,10 +81,13 @@ class Service(BaseService):
 
         self.wifi = network.WLAN(network.STA_IF)
         
-        self.mqtt_client = MQTTClient(self.env['MQTT_CLIENT_ID'],
-                                      self.env['MQTT_HOST'],
-                                      user=self.env['MQTT_USER'],
-                                      password=self.env['MQTT_PASSWORD'])
+        MQTT_USER = self.env['MQTT_USER'] if 'MQTT_USER' in self.env.keys() else None
+        MQTT_PASSWORD = self.env['MQTT_PASSWORD'] if 'MQTT_PASSWORD' in self.env.keys() else None
+
+        self.mqtt = MQTTClient(self.hardware_id,
+                               self.env['MQTT_HOST'],
+                               user=MQTT_USER,
+                               password=MQTT_PASSWORD)
         self._loop.create_task(self._blynk_event_loop())
         self._loop.create_task(self._maintain_connections(30))
         self._loop.create_task(self._update_sensors(10))
@@ -98,7 +101,7 @@ class Service(BaseService):
         self.logger.info(str(self.ds.scan()))
 
     def mqtt_connect(self):
-        self.mqtt_client.connect()
+        self.mqtt.connect()
 
     @classmethod
     def set_fan_duty_cycle(cls, value):
@@ -224,7 +227,7 @@ class Service(BaseService):
 
                     # Try to publish updates over mqtt
                     try:
-                        self.mqtt_client.publish('open-solar-furnace/%s' % self.env['MQTT_CLIENT_ID'], json.dumps(data))
+                        self.mqtt.publish('open-solar-furnace/%s' % self.hardware_id, json.dumps(data))
                     except:
                         pass
                 except Exception as e:
@@ -261,7 +264,7 @@ class Service(BaseService):
                     
                     # Reconnect mqtt if ping() fails
                     try:
-                        self.mqtt_client.ping()
+                        self.mqtt.ping()
                     except:
                         self.logger.debug('mqtt_connect()')
                         self.mqtt_connect()
