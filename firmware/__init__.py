@@ -224,7 +224,6 @@ class Service(BaseService):
 
                     # Try to publish updates over mqtt
                     try:
-                        self.mqtt_client.ping()
                         self.mqtt_client.publish('open-solar-furnace/%s' % self.env['MQTT_CLIENT_ID'], json.dumps(data))
                     except:
                         pass
@@ -240,13 +239,20 @@ class Service(BaseService):
             if self.state == 'running':
                 await asyncio.sleep(sleep_s)
                 try:
+                    # If wifi is down, disconnect blynk
                     if not self.wifi.isconnected():
                         self.logger.debug('blynk.disconnnect()')
                         blynk.disconnect()
-                    if self.mqtt_client.sock is None:
+                    
+                    # Reconnect mqtt if ping() fails
+                    try:
+                        self.mqtt_client.ping()
+                    except:
                         self.logger.debug('mqtt_connect()')
                         self.mqtt_connect()
-                    if blynk.state == BlynkLib.DISCONNECTED:
+
+                    # Try reconnecting blynk (if it's not disconnected and we have wifi)
+                    if self.wifi.isconnected() and blynk.state == BlynkLib.DISCONNECTED:
                         self.logger.info("blynk_connect()")
                         blynk.connect()
                         await asyncio.sleep(5)
