@@ -92,11 +92,11 @@ class Service(BaseService):
                                self.env['MQTT_HOST'],
                                user=MQTT_USER,
                                password=MQTT_PASSWORD)
-        self._loop.create_task(self._blynk_event_loop())
-        self._loop.create_task(self._maintain_connections(30))
-        self._loop.create_task(self._update_sensors(10))
-        self.logger.info("Scanning onewire bus...")
-        self.logger.info(str(self.ds.scan()))
+        self._asyncio_loop.create_task(self._blynk_event_loop())
+        self._asyncio_loop.create_task(self._maintain_connections(30))
+        self._asyncio_loop.create_task(self._update_sensors(10))
+        self._logger.info("Scanning onewire bus...")
+        self._logger.info(str(self.ds.scan()))
 
     def mqtt_connect(self):
         self.mqtt.connect()
@@ -216,7 +216,7 @@ class Service(BaseService):
                     data['temp_in'] = 20
                     data['power'] = self.get_power()
 
-                    self.logger.debug(repr(data))
+                    self._logger.debug(repr(data))
 
                     # If we're connected to the blynk server, push out updates
                     if blynk.state == BlynkLib.CONNECTED:
@@ -229,7 +229,7 @@ class Service(BaseService):
                     except:
                         pass
                 except Exception as e:
-                    self.logger.error('Exception: %s' % repr(e))
+                    self._logger.error('Exception: %s' % repr(e))
                 if sleep_s > convert_s:
                     await asyncio.sleep(sleep_s - convert_s)
             else:
@@ -244,7 +244,7 @@ class Service(BaseService):
                 try:
                     blynk.run()
                 except Exception as e:
-                    self.logger.error('Exception: %s' % repr(e))
+                    self._logger.error('Exception: %s' % repr(e))
             else:
                 await asyncio.sleep(sleep_s)
 
@@ -257,23 +257,23 @@ class Service(BaseService):
                 try:
                     # If wifi is down, disconnect blynk
                     if not self.wifi.isconnected():
-                        self.logger.debug('blynk.disconnnect()')
+                        self._logger.debug('blynk.disconnnect()')
                         blynk.disconnect()
                     
                     # Reconnect mqtt if ping() fails
                     try:
                         self.mqtt.ping()
                     except:
-                        self.logger.debug('mqtt_connect()')
+                        self._logger.debug('mqtt_connect()')
                         self.mqtt_connect()
 
                     # Try reconnecting blynk (if it's not disconnected and we have wifi)
                     if self.wifi.isconnected() and blynk.state == BlynkLib.DISCONNECTED:
-                        self.logger.info("blynk_connect()")
+                        self._logger.info("blynk_connect()")
                         blynk.connect()
                         await asyncio.sleep(5)
                 except Exception as e:
-                    self.logger.error('Exception: %s' % repr(e))
+                    self._logger.error('Exception: %s' % repr(e))
             else:
                 await asyncio.sleep(1)
 
